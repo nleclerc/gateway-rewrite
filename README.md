@@ -33,6 +33,14 @@ var rwGateway = function (dir){
                 rule: '^/$',
                 cgi:  '/usr/local/opt/php54/bin/php-cgi',
                 to:   '/index.php'
+            },
+
+            /* Use the following options to pass original uri to target script. */
+            {
+                rule:  '^.*$',
+                cgi:   '/usr/local/opt/php54/bin/php-cgi',
+                to:    '/index.php',
+                query: 'uri={{URI}}&{{QUERY}}'
             }
         ]}
     );

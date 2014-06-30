@@ -42,6 +42,21 @@ module.exports = function gateway_rewrite(docroot, options) {
             }
         }
 
+        function replaceStringItems(sourceString, items) {
+            if (!sourceString || !items)
+                return sourceString || '';
+
+            var result = sourceString;
+
+            Object.keys(items).forEach(function(key){
+                var regexp = new RegExp('\{\{'+key+'\}\}','g');
+                result = result.replace(regexp,items[key]);
+            });
+
+            result = result.replace(/\{\{.*\}\}/g, ''); // Remove items with no value.
+            return result;
+        }
+
         var matches = 0;
         var url = URL.parse(req.url)
 
@@ -57,6 +72,10 @@ module.exports = function gateway_rewrite(docroot, options) {
                 var file = options.rules[j].to
                 var uri = url.pathname
                 var path = normalize(join(docroot, file))
+                var query = replaceStringItems(options.rules[j].query, {
+                    URI: url.pathname,
+                    QUERY: url.query
+                });
 
                 // populate the environment
                 var host = (req.headers.host || '').split(':')
@@ -73,7 +92,7 @@ module.exports = function gateway_rewrite(docroot, options) {
                     SCRIPT_FILENAME: path,
                     PATH_TRANSLATED: path,
                     REQUEST_METHOD: req.method,
-                    QUERY_STRING: url.query || '',
+                    QUERY_STRING: query,
                     GATEWAY_INTERFACE: 'CGI/1.1',
                     SERVER_PROTOCOL: 'HTTP/1.1',
                     PATH: process.env.PATH,
