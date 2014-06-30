@@ -21,6 +21,7 @@ var gateway_rw = require('gateway-rewrite');
 
 var rwGateway = function (dir){
     return gateway_rw(require('path').resolve(dir), {
+    	// ignoreExistingFiles: true // Uncomment this line to allow fallthrough to following middleware when requesting a file that actually exists.
         rules: [
             {
                 rule: '^(/api/.+)',
