@@ -74,6 +74,7 @@ module.exports = function gateway_rewrite(docroot, options) {
                     PATH_TRANSLATED: path,
                     REQUEST_METHOD: req.method,
                     QUERY_STRING: url.query || '',
+                    SERVER_SOFTWARE: 'gateway_rewrite',
                     GATEWAY_INTERFACE: 'CGI/1.1',
                     SERVER_PROTOCOL: 'HTTP/1.1',
                     PATH: process.env.PATH,
