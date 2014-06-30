@@ -62,111 +62,116 @@ module.exports = function gateway_rewrite(docroot, options) {
 
         req.pause()
 
-        for (var j = 0; j < options.rules.length && !matches; j++) {
-            var rule = options.rules[j].rule;
-            var re = new RegExp(rule);
+        var ignoreExistingFiles = options.ignoreExistingFiles
+        var requestedPath = join(docroot, url.pathname)
 
-            if (url.pathname.match(re)) {
-                matches ++;
-                var handler = options.rules[j].cgi
-                var file = options.rules[j].to
-                var uri = url.pathname
-                var path = normalize(join(docroot, file))
-                var query = replaceStringItems(options.rules[j].query, {
-                    URI: url.pathname,
-                    QUERY: url.query
-                });
+        if (!ignoreExistingFiles || !fs.lstatSync(requestedPath).isFile()) {
+            for (var j = 0; j < options.rules.length && !matches; j++) {
+                var rule = options.rules[j].rule;
+                var re = new RegExp(rule);
 
-                // populate the environment
-                var host = (req.headers.host || '').split(':')
-                var env = {
-                    SERVER_ROOT: docroot,
-                    DOCUMENT_ROOT: docroot,
-                    SERVER_NAME: host[0],
-                    SERVER_PORT: host[1] || 80,
-                    HTTPS: req.connection.encrypted ? 'On' : 'Off',
-                    REDIRECT_STATUS: 200,
+                if (url.pathname.match(re)) {
+                    matches ++;
+                    var handler = options.rules[j].cgi
+                    var file = options.rules[j].to
+                    var uri = url.pathname
+                    var path = normalize(join(docroot, file))
+                    var query = replaceStringItems(options.rules[j].query, {
+                        URI: url.pathname,
+                        QUERY: url.query
+                    });
 
-                    SCRIPT_NAME: file,
-                    REQUEST_URI: uri,
-                    SCRIPT_FILENAME: path,
-                    PATH_TRANSLATED: path,
-                    REQUEST_METHOD: req.method,
-                    QUERY_STRING: query,
-                    SERVER_SOFTWARE: 'gateway_rewrite',
-                    GATEWAY_INTERFACE: 'CGI/1.1',
-                    SERVER_PROTOCOL: 'HTTP/1.1',
-                    PATH: process.env.PATH,
-                    __proto__: options.env || {},
+                    // populate the environment
+                    var host = (req.headers.host || '').split(':')
+                    var env = {
+                        SERVER_ROOT: docroot,
+                        DOCUMENT_ROOT: docroot,
+                        SERVER_NAME: host[0],
+                        SERVER_PORT: host[1] || 80,
+                        HTTPS: req.connection.encrypted ? 'On' : 'Off',
+                        REDIRECT_STATUS: 200,
 
-                    REMOTE_ADDR: '127.0.0.1' // Fake
-                }
+                        SCRIPT_NAME: file,
+                        REQUEST_URI: uri,
+                        SCRIPT_FILENAME: path,
+                        PATH_TRANSLATED: path,
+                        REQUEST_METHOD: req.method,
+                        QUERY_STRING: query,
+                        SERVER_SOFTWARE: 'gateway_rewrite',
+                        GATEWAY_INTERFACE: 'CGI/1.1',
+                        SERVER_PROTOCOL: 'HTTP/1.1',
+                        PATH: process.env.PATH,
+                        __proto__: options.env || {},
 
-                // expose request headers
-                for (var header in req.headers) {
-                    var name = 'HTTP_' + header.toUpperCase().replace(/-/g, '_')
-                    env[name] = req.headers[header]
-                }
-
-                if ('content-length' in req.headers) {
-                    env.CONTENT_LENGTH = req.headers['content-length']
-                }
-
-                if ('content-type' in req.headers) {
-                    env.CONTENT_TYPE = req.headers['content-type']
-                }
-
-
-                var child = spawn(handler, [], {
-                    'env': env
-                }).on('exit', function (code) {
-                    exit = code
-                    done()
-                })
-
-                var line = []
-
-                child.stdout.on('end', done).on('data', function (buf) {
-
-                    if (body) {
-                        return res.write(buf)
+                        REMOTE_ADDR: '127.0.0.1' // Fake
                     }
 
-                    for (var i = 0; i < buf.length; i++) {
+                    // expose request headers
+                    for (var header in req.headers) {
+                        var name = 'HTTP_' + header.toUpperCase().replace(/-/g, '_')
+                        env[name] = req.headers[header]
+                    }
 
-                        var c = buf[i]
+                    if ('content-length' in req.headers) {
+                        env.CONTENT_LENGTH = req.headers['content-length']
+                    }
 
-                        if (c == 0xA) {
-                            if (!line.length) {
-                                body = true
-                                res.writeHead(statusCode || 200, reason)
-                                res.write(buf.slice(i + 1))
-                                return
-                            }
+                    if ('content-type' in req.headers) {
+                        env.CONTENT_TYPE = req.headers['content-type']
+                    }
 
-                            var s = line.join('')
-                            line = []
-                            if (!statusCode) {
-                                var m = statusExp.exec(s)
-                                if (m) {
-                                    statusCode = m[1]
-                                    reason = m[2]
-                                    continue;
-                                }
-                            }
 
-                            var idx = s.indexOf(':')
-                            if ( !body ) {
-                            }
-                                res.setHeader(s.slice(0, idx), s.slice(idx + 1).trim())
-                        } else if (c != 0xD) {
-                            line.push(String.fromCharCode(c))
+                    var child = spawn(handler, [], {
+                        'env': env
+                    }).on('exit', function (code) {
+                        exit = code
+                        done()
+                    })
+
+                    var line = []
+
+                    child.stdout.on('end', done).on('data', function (buf) {
+
+                        if (body) {
+                            return res.write(buf)
                         }
-                    }
 
-                })
+                        for (var i = 0; i < buf.length; i++) {
 
-                req.pipe(child.stdin)
+                            var c = buf[i]
+
+                            if (c == 0xA) {
+                                if (!line.length) {
+                                    body = true
+                                    res.writeHead(statusCode || 200, reason)
+                                    res.write(buf.slice(i + 1))
+                                    return
+                                }
+
+                                var s = line.join('')
+                                line = []
+                                if (!statusCode) {
+                                    var m = statusExp.exec(s)
+                                    if (m) {
+                                        statusCode = m[1]
+                                        reason = m[2]
+                                        continue;
+                                    }
+                                }
+
+                                var idx = s.indexOf(':')
+                                if ( !body ) {
+                                }
+                                    res.setHeader(s.slice(0, idx), s.slice(idx + 1).trim())
+                            } else if (c != 0xD) {
+                                line.push(String.fromCharCode(c))
+                            }
+                        }
+
+                    })
+
+                    req.pipe(child.stdin)
+                }
             }
         }
 
