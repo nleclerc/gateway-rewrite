@@ -50,7 +50,7 @@ module.exports = function gateway_rewrite(docroot, options) {
         var ignoreExistingFiles = options.ignoreExistingFiles
         var requestedPath = join(docroot, url.pathname)
 
-        if (!ignoreExistingFiles || !fs.lstatSync(requestedPath).isFile()) {
+        if (!ignoreExistingFiles || !fs.existsSync(requestedPath) || !fs.lstatSync(requestedPath).isFile()) {
             for (var j = 0; j < options.rules.length && !matches; j++) {
                 var rule = options.rules[j].rule;
                 var re = new RegExp(rule);
