@@ -75,7 +75,7 @@ module.exports = function gateway_rewrite(docroot, options) {
                 var query = replaceStringItems(options.rules[j].query, {
                     RELATIVE_URI: url.pathname.replace(/^\//,''),
                     URI: url.pathname,
-                    QUERY: url.query
+                    QUERY: url.query || ''
                 });
 
                 // populate the environment
