@@ -35,12 +35,12 @@ var rwGateway = function (dir){
                 to:   '/index.php'
             },
 
-            /* Use the following options to pass original uri to target script. */
+            /* Use the following options to pass original uri to target script. Relative URI doesn't have a leading slash. */
             {
                 rule:  '^.*$',
                 cgi:   '/usr/local/opt/php54/bin/php-cgi',
                 to:    '/index.php',
-                query: 'uri={{URI}}&{{QUERY}}'
+                query: 'uri={{URI}}&relativeUri={{RELATIVE_URI}}&{{QUERY}}'
             }
         ]}
     );
