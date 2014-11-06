@@ -42,18 +42,25 @@ module.exports = function gateway_rewrite(docroot, options) {
             }
         }
 
-        function replaceStringItems(sourceString, items) {
-            if (!sourceString || !items)
+        function replaceStringItems(sourceString, regexMatches, items) {
+            if (!sourceString || !regexMatches || !items)
                 return sourceString || '';
 
             var result = sourceString;
 
-            Object.keys(items).forEach(function(key){
+            var actualItems = JSON.parse(JSON.stringify(items));
+
+            regexMatches.forEach(function(match,index){
+                actualItems['\\$'+index] = match;
+            });
+
+            Object.keys(actualItems).forEach(function(key){
                 var regexp = new RegExp('\{\{'+key+'\}\}','g');
-                result = result.replace(regexp,items[key]);
+                result = result.replace(regexp,actualItems[key]);
             });
 
             result = result.replace(/\{\{.*\}\}/g, ''); // Remove items with no value.
+
             return result;
         }
 
@@ -70,13 +77,16 @@ module.exports = function gateway_rewrite(docroot, options) {
                 var rule = options.rules[j].rule;
                 var re = new RegExp(rule);
 
-                if (url.pathname.match(re)) {
+                var urlbase = url.pathname.replace(/^\//,'');
+                var regexMatches = re.exec(urlbase);
+
+                if (regexMatches) {
                     matches ++;
                     var handler = options.rules[j].cgi
                     var file = options.rules[j].to
                     var uri = url.pathname
                     var path = normalize(join(docroot, file))
-                    var query = replaceStringItems(options.rules[j].query, {
+                    var query = replaceStringItems(options.rules[j].query, regexMatches, {
                         RELATIVE_URI: url.pathname.replace(/^\//,''),
                         URI: url.pathname,
                         QUERY: url.query || ''
